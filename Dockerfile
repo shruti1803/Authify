@@ -1,20 +1,47 @@
-# Stage 1: Build frontend
-FROM node:20 AS frontend-build
-WORKDIR /app
-COPY client /app/client
-RUN cd /app/client && npm install && npm run build
+# -----------------------------
+# Stage 1: Build backend
+# -----------------------------
+FROM maven:3.9.11-eclipse-temurin-21-noble AS backend-build
 
-# Stage 2: Build backend
-FROM maven:3.9.3-eclipse-temurin-21 AS backend-build
 WORKDIR /app
+
+# Copy backend source
 COPY authify /app/authify
+
+# Make Maven wrapper executable
 RUN chmod +x /app/authify/mvnw
+
+# Build backend (skip tests to save time)
 RUN cd /app/authify && ./mvnw clean package -DskipTests
 
-# Stage 3: Final runtime image
-FROM eclipse-temurin:21-jdk
+# -----------------------------
+# Stage 2: Build frontend
+# -----------------------------
+FROM node:20 AS frontend-build
+
 WORKDIR /app
-COPY --from=backend-build /app/authify/target/authify-0.0.1-SNAPSHOT.jar app.jar
-COPY --from=frontend-build /app/client/build /app/static
+
+# Copy frontend source
+COPY client /app/client
+
+# Install dependencies and build frontend
+RUN cd /app/client && npm install && npm run build
+
+# -----------------------------
+# Stage 3: Final runtime image
+# -----------------------------
+FROM eclipse-temurin:21-jdk AS runtime
+
+WORKDIR /app
+
+# Copy backend jar
+COPY --from=backend-build /app/authify/target/*.jar /app/authify.jar
+
+# Copy frontend build
+COPY --from=frontend-build /app/client/dist /app/client/dist
+
+# Expose the port your Spring Boot app runs on
 EXPOSE 8080
-ENTRYPOINT ["java","-jar","app.jar"]
+
+# Run the backend
+ENTRYPOINT ["java", "-jar", "/app/authify.jar"]
