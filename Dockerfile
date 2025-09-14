@@ -1,7 +1,7 @@
 # -----------------------------
 # Stage 1: Build backend
 # -----------------------------
-FROM maven:3.9.11-eclipse-temurin-21-noble AS backend-build
+FROM maven:3.9.11-eclipse-temurin-21 AS backend-build
 
 WORKDIR /app
 
