@@ -39,13 +39,14 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/api/v1.0/auth/login",
-                                "/api/v1.0/auth/register",
-                                "/api/v1.0/auth/send-reset-otp",
-                                "/api/v1.0/auth/reset-password",
-                                "/api/v1.0/auth/logout"
+                                "/api/v1.0/login",
+                                "/api/v1.0/register",
+                                "/api/v1.0/send-reset-otp",
+                                "/api/v1.0/reset-password",
+                                "/api/v1.0/logout"
                         ).permitAll()
-                        .anyRequest().authenticated())
+                        .anyRequest().authenticated()
+                )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .logout(AbstractHttpConfigurer::disable)
                 .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class)
@@ -82,5 +83,4 @@ public class SecurityConfig {
         authenticationProvider.setPasswordEncoder(passwordEncoder());
         return new ProviderManager(authenticationProvider);
     }
-
 }
