@@ -38,8 +38,14 @@ public class SecurityConfig {
         http.cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/login", "/register", "/send-reset-otp", "/reset-password", "/logout")
-                        .permitAll().anyRequest().authenticated())
+                        .requestMatchers(
+                                "/api/v1.0/auth/login",
+                                "/api/v1.0/auth/register",
+                                "/api/v1.0/auth/send-reset-otp",
+                                "/api/v1.0/auth/reset-password",
+                                "/api/v1.0/auth/logout"
+                        ).permitAll()
+                        .anyRequest().authenticated())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .logout(AbstractHttpConfigurer::disable)
                 .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class)
