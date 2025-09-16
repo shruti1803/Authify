@@ -28,13 +28,12 @@ import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
+@RequestMapping("/api/v1.0/auth")   // ✅ Added base path
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
     private final AppUserDetailsService appUserDetailsService;
-
     private final JwtUtil jwtUtil;
-
     private final ProfileService profileService;
 
     @PostMapping("/login")
@@ -43,25 +42,31 @@ public class AuthController {
             authenticate(request.getEmail(), request.getPassword());
             final UserDetails userDetails = appUserDetailsService.loadUserByUsername(request.getEmail());
             final String jwtToken = jwtUtil.generateToken(userDetails);
+
             ResponseCookie cookie = ResponseCookie.from("jwt", jwtToken)
                     .httpOnly(true)
                     .path("/")
                     .maxAge(Duration.ofDays(1))
                     .sameSite("Strict")
                     .build();
-            return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, cookie.toString())
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, cookie.toString())
                     .body(new AuthResponse(request.getEmail(), jwtToken));
-        } catch(BadCredentialsException ex) {
+
+        } catch (BadCredentialsException ex) {
             Map<String, Object> error = new HashMap<>();
             error.put("error", true);
             error.put("message", "Email or password is incorrect");
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-        } catch(DisabledException ex) {
+
+        } catch (DisabledException ex) {
             Map<String, Object> error = new HashMap<>();
             error.put("error", true);
             error.put("message", "Account is disabled");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
-        }catch(Exception ex) {
+
+        } catch (Exception ex) {
             Map<String, Object> error = new HashMap<>();
             error.put("error", true);
             error.put("message", "Authentication failed");
@@ -74,7 +79,8 @@ public class AuthController {
     }
 
     @GetMapping("/is-authenticated")
-    public ResponseEntity<Boolean> isAuthenticated(@CurrentSecurityContext(expression = "authentication?.name") String email) {
+    public ResponseEntity<Boolean> isAuthenticated(
+            @CurrentSecurityContext(expression = "authentication?.name") String email) {
         return ResponseEntity.ok(email != null);
     }
 
@@ -135,3 +141,4 @@ public class AuthController {
     }
 
 }
+
