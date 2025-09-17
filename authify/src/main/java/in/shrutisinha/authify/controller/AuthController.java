@@ -28,13 +28,33 @@ import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1.0/auth")   // ✅ Added base path
+@RequestMapping("/api/v1.0/auth")
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
     private final AppUserDetailsService appUserDetailsService;
     private final JwtUtil jwtUtil;
     private final ProfileService profileService;
+
+    // ✅ Register endpoint
+    @PostMapping("/register")
+    public ResponseEntity<?> register(@RequestBody AuthRequest request) {
+        try {
+            profileService.registerUser(request.getEmail(), request.getName(), request.getPassword());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "User registered successfully");
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", true);
+            error.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        }
+    }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody AuthRequest request) {
@@ -86,43 +106,26 @@ public class AuthController {
 
     @PostMapping("/send-reset-otp")
     public void sendResetOtp(@RequestParam String email) {
-        try {
-            profileService.sendResetOtp(email);
-        } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
-        }
+        profileService.sendResetOtp(email);
     }
 
     @PostMapping("/reset-password")
     public void resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
-        try {
-            profileService.resetPassword(request.getEmail(), request.getOtp(), request.getNewPassword());
-        } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
-        }
+        profileService.resetPassword(request.getEmail(), request.getOtp(), request.getNewPassword());
     }
 
     @PostMapping("/send-otp")
     public void sendVerifyOtp(@CurrentSecurityContext(expression = "authentication?.name") String email) {
-        try {
-            profileService.sendOtp(email);
-        } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
-        }
+        profileService.sendOtp(email);
     }
 
     @PostMapping("/verify-otp")
     public void verifyEmail(@RequestBody Map<String, Object> request,
                             @CurrentSecurityContext(expression = "authentication?.name") String email) {
-        if (request.get("otp").toString() == null) {
+        if (request.get("otp") == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing details");
         }
-
-        try {
-            profileService.verifyOtp(email, request.get("otp").toString());
-        } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
-        }
+        profileService.verifyOtp(email, request.get("otp").toString());
     }
 
     @PostMapping("/logout")
@@ -139,6 +142,6 @@ public class AuthController {
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
                 .body("Logged out successfully!");
     }
-
 }
+
 

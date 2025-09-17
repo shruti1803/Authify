@@ -16,12 +16,33 @@ import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 @RequiredArgsConstructor
-public class ProfileServiceImpl implements ProfileService{
+public class ProfileServiceImpl implements ProfileService {
 
     private final UserRepostory userRepostory;
     private final PasswordEncoder passwordEncoder;
-
     private final EmailService emailService;
+
+    // ✅ New register method
+    @Override
+    public void registerUser(String email, String name, String rawPassword) {
+        if (userRepostory.existsByEmail(email)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "User already exists with email: " + email);
+        }
+
+        UserEntity user = UserEntity.builder()
+                .userId(UUID.randomUUID().toString())
+                .email(email)
+                .name(name)
+                .password(passwordEncoder.encode(rawPassword))
+                .isAccountVerified(false)
+                .resetOtp(null)
+                .resetOtpExpireAt(0L)
+                .verifyOtp(null)
+                .verifyOtpExpireAt(0L)
+                .build();
+
+        userRepostory.save(user);
+    }
 
     @Override
     public ProfileResponse createProfile(ProfileRequest request) {
@@ -36,40 +57,33 @@ public class ProfileServiceImpl implements ProfileService{
     @Override
     public ProfileResponse getProfile(String email) {
         UserEntity existingUser = userRepostory.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: "+email));
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
         return convertToProfileResponse(existingUser);
     }
 
     @Override
     public void sendResetOtp(String email) {
         UserEntity existingEntity = userRepostory.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: "+email));
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
 
-        //Generate 6 digit otp
         String otp = String.valueOf(ThreadLocalRandom.current().nextInt(100000, 1000000));
-
-        //calculate expiry time (current time + 15 minutes in milliseconds)
         long expiryTime = System.currentTimeMillis() + (15 * 60 * 1000);
 
-        //update the profile/user
         existingEntity.setResetOtp(otp);
         existingEntity.setResetOtpExpireAt(expiryTime);
-
-        //save into the database
         userRepostory.save(existingEntity);
 
-        try{
+        try {
             emailService.sendResetOtpEmail(existingEntity.getEmail(), otp);
-        } catch(Exception ex) {
+        } catch (Exception ex) {
             throw new RuntimeException("Unable to send email");
         }
-
     }
 
     @Override
     public void resetPassword(String email, String otp, String newPassword) {
         UserEntity existingUser = userRepostory.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: "+email));
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
 
         if (existingUser.getResetOtp() == null || !existingUser.getResetOtp().equals(otp)) {
             throw new RuntimeException("Invalid OTP");
@@ -82,31 +96,23 @@ public class ProfileServiceImpl implements ProfileService{
         existingUser.setPassword(passwordEncoder.encode(newPassword));
         existingUser.setResetOtp(null);
         existingUser.setResetOtpExpireAt(0L);
-
         userRepostory.save(existingUser);
-
     }
 
     @Override
     public void sendOtp(String email) {
         UserEntity existingUser = userRepostory.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: "+email));
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
 
-        if (existingUser.getIsAccountVerified() != null && existingUser.getIsAccountVerified()) {
+        if (Boolean.TRUE.equals(existingUser.getIsAccountVerified())) {
             return;
         }
 
-        //Generate 6 digit OTP
         String otp = String.valueOf(ThreadLocalRandom.current().nextInt(100000, 1000000));
-
-        //calculate expiry time (current time + 24 hours in milliseconds)
         long expiryTime = System.currentTimeMillis() + (24 * 60 * 60 * 1000);
 
-        //Update the user entity
         existingUser.setVerifyOtp(otp);
         existingUser.setVerifyOtpExpireAt(expiryTime);
-
-        //save to database
         userRepostory.save(existingUser);
 
         try {
@@ -119,7 +125,8 @@ public class ProfileServiceImpl implements ProfileService{
     @Override
     public void verifyOtp(String email, String otp) {
         UserEntity existingUser = userRepostory.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: "+email));
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
+
         if (existingUser.getVerifyOtp() == null || !existingUser.getVerifyOtp().equals(otp)) {
             throw new RuntimeException("Invalid OTP");
         }
@@ -131,7 +138,6 @@ public class ProfileServiceImpl implements ProfileService{
         existingUser.setIsAccountVerified(true);
         existingUser.setVerifyOtp(null);
         existingUser.setVerifyOtpExpireAt(0L);
-
         userRepostory.save(existingUser);
     }
 
@@ -158,3 +164,4 @@ public class ProfileServiceImpl implements ProfileService{
                 .build();
     }
 }
+

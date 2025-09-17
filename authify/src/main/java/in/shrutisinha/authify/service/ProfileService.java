@@ -16,4 +16,7 @@ public interface ProfileService {
     void sendOtp(String email);
 
     void verifyOtp(String email, String otp);
+
+    // ✅ Add this
+    void registerUser(String email, String name, String password);
 }
